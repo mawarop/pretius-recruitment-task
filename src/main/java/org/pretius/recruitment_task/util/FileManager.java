@@ -10,16 +10,17 @@ import java.nio.file.Paths;
 
 public class FileManager {
     private static final Logger log = LogManager.getLogger();
-    public static Path createDirectory(String name){
+
+    public static Path createDirectory(String name) {
         Path path = Paths.get("./" + name);
-        try{
-            if(!Files.exists(path)){
+        try {
+            if (!Files.exists(path)) {
                 return Files.createDirectories(Paths.get("./" + name).toAbsolutePath().normalize());
             } else {
                 log.warn("Directory " + path.toString() + " exist");
                 return path;
             }
-        }catch (IOException ioException){
+        } catch (IOException ioException) {
             log.error("Can not create" + name + "directory");
             log.error(ioException);
             throw new IllegalStateException(ioException);

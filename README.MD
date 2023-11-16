@@ -1,14 +1,10 @@
-
 # Project Title
 
 Java file segregate app.
 
-
-
 ## Authors
 
 - [Mateusz Oprawa](https://www.github.com/mawarop)
-
 
 ## Installation and Build
 
