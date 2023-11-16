@@ -4,6 +4,7 @@ import org.apache.commons.io.FilenameUtils;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.pretius.recruitment_task.util.FileManager;
+import static org.pretius.recruitment_task.util.MiscUtil.*;
 
 import java.io.IOException;
 import java.nio.file.*;
@@ -13,94 +14,77 @@ import java.time.ZoneId;
 
 public class SegregateApp {
     private static final Logger log = LogManager.getLogger();
-    public static final String COUNT_FILENAME = "count.txt";
 
     public static void main(String[] args) {
         Path homeDir = FileManager.createDirectory("HOME");
-        Path devDir = FileManager.createDirectory("DEV");
-        Path testDir = FileManager.createDirectory("TEST");
+
+        FileManager.createDirectory("DEV");
+        FileManager.createDirectory("TEST");
 
         try (WatchService watchService = FileSystems.getDefault().newWatchService()) {
-            homeDir.register(watchService,
-                    StandardWatchEventKinds.ENTRY_CREATE);
+            registerWatcherForDir(homeDir, watchService);
 
-            WatchKey key;
             long allFilesCounter = 0;
             long homeFilesCounter = 0;
             long devFilesCounter = 0;
             long testFilesCounter = 0;
 
+            FileManager.createCountFile(allFilesCounter, homeFilesCounter, devFilesCounter, testFilesCounter);
+            startWatchingFilesEvents(watchService, devFilesCounter, testFilesCounter, allFilesCounter, homeFilesCounter);
 
-            createCountFile(allFilesCounter, homeFilesCounter, devFilesCounter, testFilesCounter);
-
-            while ((key = watchService.take()) != null) {
-                for (WatchEvent<?> event : key.pollEvents()) {
-
-                    Path sourceFileDir = (Path) key.watchable();
-                    Path sourceFileFullPath = sourceFileDir.resolve((Path) event.context());
-
-                    Path basePath = Paths.get(".").toAbsolutePath().normalize();
-                    String fileExtension = FilenameUtils.getExtension(sourceFileFullPath.toString());
-                    if (event.kind().equals(StandardWatchEventKinds.ENTRY_CREATE)) {
-                        if (fileExtension.equals("jar")) {
-                            try {
-                                FileTime creationTime = (FileTime) Files.getAttribute(sourceFileFullPath, "creationTime");
-                                LocalDateTime ldtCreationTime = LocalDateTime.ofInstant(creationTime.toInstant(), ZoneId.systemDefault());
-                                if (ldtCreationTime.getHour() % 2 == 0) {
-                                    Files.move(sourceFileFullPath, basePath.resolve("DEV/" + sourceFileFullPath.getFileName()), StandardCopyOption.REPLACE_EXISTING);
-
-                                    devFilesCounter++;
-
-                                } else {
-                                    Files.move(sourceFileFullPath, basePath.resolve("TEST/" + sourceFileFullPath.getFileName()), StandardCopyOption.REPLACE_EXISTING);
-                                    testFilesCounter++;
-                                }
-                            } catch (IOException ioException) {
-                                log.error(ioException);
-                                throw new IllegalStateException(ioException);
-                            }
-                            allFilesCounter++;
-
-                        } else if (fileExtension.equals("xml")) {
-                            Files.move(sourceFileFullPath, basePath.resolve("DEV/" + sourceFileFullPath.getFileName()), StandardCopyOption.REPLACE_EXISTING);
-                            devFilesCounter++;
-                            allFilesCounter++;
-
-                        }
-                    }
-
-                }
-                createCountFile(allFilesCounter, homeFilesCounter, devFilesCounter, testFilesCounter);
-                key.reset();
-            }
         } catch (IOException | InterruptedException exception) {
             log.error(exception);
             throw new IllegalStateException(exception);
         }
 
     }
-    public static void createCountFile(long allFilesCounter, long homeFilesCounter, long devFilesCounter, long testFilesCounter) {
-        String countFileData = createCountFileData(allFilesCounter, homeFilesCounter, devFilesCounter, testFilesCounter);
-        Path countFilePath = Paths.get(COUNT_FILENAME);
 
-        try {
-            if (Files.exists(countFilePath)) {
-                Files.delete(countFilePath);
-                Files.write(countFilePath, countFileData.getBytes(), StandardOpenOption.CREATE_NEW);
-            }
-            Files.write(countFilePath, countFileData.getBytes(), StandardOpenOption.CREATE_NEW);
-        } catch (IOException ioException) {
-            log.warn(ioException);
-            throw new IllegalStateException(ioException);
-        }
+    private static void registerWatcherForDir(Path dir, WatchService watchService) throws IOException {
+        dir.register(watchService,
+                StandardWatchEventKinds.ENTRY_CREATE);
     }
 
-    public static String createCountFileData(long allFilesCounter, long homeFilesCounter, long devFilesCounter, long testFilesCounter){
-        String dataToWrite = "All files count: " + allFilesCounter +
-                "\nHOME files count: " + homeFilesCounter +
-                "\nDEV files count: " + devFilesCounter +
-                "\nTEST files count: " + testFilesCounter;
-        return dataToWrite;
+    private static void startWatchingFilesEvents(WatchService watchService, long devFilesCounter, long testFilesCounter, long allFilesCounter, long homeFilesCounter) throws InterruptedException, IOException {
+        WatchKey key;
+        while ((key = watchService.take()) != null) {
+            for (WatchEvent<?> event : key.pollEvents()) {
+
+                Path sourceFileDir = (Path) key.watchable();
+                Path sourceFileFullPath = sourceFileDir.resolve((Path) event.context());
+                Path basePath = Paths.get(".").toAbsolutePath().normalize();
+                String fileExtension = FilenameUtils.getExtension(sourceFileFullPath.toString());
+
+                if (isEntryCreateEvent(event)) {
+                    if (isJarFile(fileExtension)) {
+                        try {
+                            FileTime creationTime = (FileTime) Files.getAttribute(sourceFileFullPath, "creationTime");
+                            LocalDateTime ldtCreationTime = LocalDateTime.ofInstant(creationTime.toInstant(), ZoneId.systemDefault());
+
+                            if (isEvenHour(ldtCreationTime)) {
+                                FileManager.moveFile(sourceFileFullPath, basePath, "DEV/");
+                                devFilesCounter++;
+
+                            } else {
+                                FileManager.moveFile(sourceFileFullPath, basePath, "TEST/");
+                                testFilesCounter++;
+                            }
+                        } catch (IOException ioException) {
+                            log.error(ioException);
+                            throw new IllegalStateException(ioException);
+                        }
+                        allFilesCounter++;
+
+                    } else if (isXmlFile(fileExtension)) {
+                        FileManager.moveFile(sourceFileFullPath, basePath, "DEV/");
+                        devFilesCounter++;
+                        allFilesCounter++;
+
+                    }
+                }
+            }
+            FileManager.createCountFile(allFilesCounter, homeFilesCounter, devFilesCounter, testFilesCounter);
+            key.reset();
+        }
     }
 
 }
