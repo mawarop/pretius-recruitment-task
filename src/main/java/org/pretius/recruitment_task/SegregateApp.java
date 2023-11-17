@@ -4,13 +4,14 @@ import org.apache.commons.io.FilenameUtils;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.pretius.recruitment_task.util.FileManager;
-import static org.pretius.recruitment_task.util.MiscUtil.*;
 
 import java.io.IOException;
 import java.nio.file.*;
 import java.nio.file.attribute.FileTime;
 import java.time.LocalDateTime;
 import java.time.ZoneId;
+
+import static org.pretius.recruitment_task.util.MiscUtil.*;
 
 public class SegregateApp {
     private static final Logger log = LogManager.getLogger();
@@ -81,8 +82,8 @@ public class SegregateApp {
 
                     }
                 }
+                FileManager.createCountFile(allFilesCounter, homeFilesCounter, devFilesCounter, testFilesCounter);
             }
-            FileManager.createCountFile(allFilesCounter, homeFilesCounter, devFilesCounter, testFilesCounter);
             key.reset();
         }
     }

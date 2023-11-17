@@ -17,7 +17,7 @@ public class FileManager {
                 return Files.createDirectories(path.toAbsolutePath().normalize());
             } else {
                 log.warn("Directory " + path + " exist");
-                return path;
+                return path.toAbsolutePath().normalize();
             }
         } catch (IOException ioException) {
             log.error("Can not create" + name + "directory");
@@ -36,18 +36,14 @@ public class FileManager {
         Path countFilePath = Paths.get(COUNT_FILENAME);
 
         try {
-            if (Files.exists(countFilePath)) {
-                Files.delete(countFilePath);
-                Files.write(countFilePath, countFileData.getBytes(), StandardOpenOption.CREATE_NEW);
-            }
-            Files.write(countFilePath, countFileData.getBytes(), StandardOpenOption.CREATE_NEW);
+            Files.write(countFilePath, countFileData.getBytes());
         } catch (IOException ioException) {
             log.warn(ioException);
             throw new IllegalStateException(ioException);
         }
     }
 
-    private static String createCountFileData(long allFilesCounter, long homeFilesCounter, long devFilesCounter, long testFilesCounter){
+    public static String createCountFileData(long allFilesCounter, long homeFilesCounter, long devFilesCounter, long testFilesCounter) {
         String dataToWrite = "All files count: " + allFilesCounter +
                 "\nHOME files count: " + homeFilesCounter +
                 "\nDEV files count: " + devFilesCounter +
