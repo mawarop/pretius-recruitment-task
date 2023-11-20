@@ -4,7 +4,10 @@ import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
 import java.io.IOException;
-import java.nio.file.*;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
+import java.nio.file.StandardCopyOption;
 
 public class FileManager {
     public static final String COUNT_FILENAME = "count.txt";
@@ -33,7 +36,7 @@ public class FileManager {
 
     public static void createCountFile(long allFilesCounter, long homeFilesCounter, long devFilesCounter, long testFilesCounter) {
         String countFileData = createCountFileData(allFilesCounter, homeFilesCounter, devFilesCounter, testFilesCounter);
-        Path countFilePath = Paths.get(COUNT_FILENAME);
+        Path countFilePath = Paths.get("HOME/" + COUNT_FILENAME);
 
         try {
             Files.write(countFilePath, countFileData.getBytes());
